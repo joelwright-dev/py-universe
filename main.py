@@ -1,4 +1,5 @@
 import enum
+from ipaddress import NetmaskValueError
 from re import S
 import pygame
 import pygame.math as pymath
@@ -85,70 +86,36 @@ def update(group,screen):
         particle.rect.clamp_ip(screen.get_rect())
         particle.draw(screen)
 
-def attract(particles1, particles2, force):
-    S = 0
-    E = 1
-
-    for i in range(len(particles1)):
-        fx = 0
-        fy = 0
-
-        for j in range(len(particles2)):
-            a = particles1[i]
-            b = particles2[j]
-            dx = a.position.x - b.position.x
-            dy = a.position.y - b.position.y
-            d = math.sqrt(dx**2 + dy**2)
-
-            if(d > 0):
-                if force == "STRONG":
-                    F = S * 1/d**2
-                elif force == "ELECTROMAGNETIC":
-                    F = -E * (a.charge * b.charge)/d**2
-                fx += F * dx/d
-                fy += F * dy/d
-
-        a.velocityx = (a.velocityx + fx)*0.5
-        a.velocityy = (a.velocityy + fy)*0.5
-        a.position.x += a.velocityx
-        a.position.y += a.velocityy
-
-        if(a.position.x <= 0 or a.position.x >= screen.get_size()[0]):
-            a.velocityx = -1*a.velocityx
-            a.velocityx += 1
-        if(a.position.y <= 0 or a.position.y >= screen.get_size()[1]):
-            a.velocityy = -1*a.velocityy
-            a.velocityy +=1 
 
 # up = create(18,YELLOW,2/3)
 # down = create(18,BLUE,-1/3)
 # electron = create(6,WHITE,-1)
 
-S = 1
-E = 100
+dampener = 10
 
 def calculate_strong(distance):
     F = S * 1/distance**2
     return F
 
 def calculate_electromagnetic(distance,p1,p2):
-    F = E * (p1.charge * p2.charge)/distance**2
+    F = E * (p1.charge * p2.charge)/(distance**2+dampener)
     return F
 
-def add_momentum(xmomentum,ymomentum):
+def add_momentum(xmomentum,ymomentum, a):
+    calculateNetMomentum()
     xmomentum *= 2
     ymomentum *= 2
-    xmomentum /= len(all_particles)
-    ymomentum /= len(all_particles)
     mass = 0
     for particle in all_particles:
-        mass += particle.mass
+        if particle != a:
+            mass += particle.mass
     xvelocity = xmomentum/mass
     yvelocity = ymomentum/mass
 
     for particle in all_particles:
-        particle.velocityx += xvelocity
-        particle.velocityy += yvelocity
+        if particle != a:
+            particle.velocityx += xvelocity
+            particle.velocityy += yvelocity
 
 def update_velocity():
     for p1 in all_particles:
@@ -164,35 +131,52 @@ def update_velocity():
                     F = calculate_strong(d) + calculate_electromagnetic(d,p1,p2)
                     fx += F * dx/d
                     fy += F * dy/d
-                else:
-                    F = random.randint(1,10)
-                    fx += F * dx/100
-                    fy += F * dy/100
+                # else:
+                #     F = random.randint(1,10)
+                #     fx += F * dx/1000
+                #     fy += F * dy/1000
 
         p1.velocityx = p1.velocityx + fx/p1.mass
         p1.velocityy = p1.velocityy + fy/p1.mass
 
 def update_position():
     for a in all_particles:
-        a.position.x += a.velocityx
-        a.position.y += a.velocityy
+        a.position.x += a.velocityx/DOS
+        a.position.y += a.velocityy/DOS
 
-        if(a.position.x <= 0 or a.position.x >= screen.get_size()[0]):
-            a.velocityx = -1*a.velocityx
-            #add_momentum(a.velocityx*a.mass,a.velocityy*a.mass)
-        if(a.position.y <= 0 or a.position.y >= screen.get_size()[1]):
-            a.velocityy = -1*a.velocityy
-            #add_momentum(a.velocityx*a.mass,a.velocityy*a.mass)
+        # if(a.position.x <= 0 or a.position.x >= screen.get_size()[0]):
+        #     #add_momentum(a.velocityx*a.mass,0, a)
+        #     a.velocityx = -1*a.velocityx
+        #     calculateNetMomentum()
+        # if(a.position.y <= 0 or a.position.y >= screen.get_size()[1]):
+        #     #add_momentum(0,a.velocityy*a.mass, a)
+        #     a.velocityy = -1*a.velocityy
+        #     calculateNetMomentum()
 
 def move():
-    update_velocity()
-    update_position()
+    for i in range(DOS):
+        update_velocity()
+        update_position()
 
-protons = create(10,YELLOW,1,1836)
+def calculateNetMomentum():
+    momentumx=0
+    momentumy=0
+    for particle in all_particles:
+        momentumx += particle.velocityx*particle.mass
+        momentumy += particle.velocityy*particle.mass
+
+    print(momentumx,momentumy)
+
+protons = create(25,YELLOW,1,1000)
 electrons = create(10, WHITE,-1,1)
 #neutrons = create(10,BLUE,0,1839)
 
 all_particles = protons + electrons
+
+S = 1
+E = 100
+
+DOS = 10
 
 while running:
     for event in pygame.event.get():
@@ -208,25 +192,10 @@ while running:
     move()
     update(protons,screen)
     update(electrons,screen)
-    #update(neutrons,screen)
 
-    # randomnumber = random.randint(1,10)
-    # if randomnumber == 1:
-    #     position = (random.randint(0,screen.get_size()[0]),random.randint(0,screen.get_size()[1]))
-    #     dot = Dot(BLUE,position)
-    #     protons.append(dot)
-
-    # attract(protons,neutrons,"ELECTROMAGNETIC")
-    # attract(neutrons,protons,"ELECTROMAGNETIC")
-    # attract(protons,protons,"ELECTROMAGNETIC")
-
-    # attract(protons,protons,"STRONG")
-    # attract(protons,neutrons,"STRONG")
-    # attract(neutrons,neutrons,"STRONG")
-    # attract(neutrons,protons,"STRONG")
 
     pygame.display.flip()
 
-    clock.tick(100)
+    clock.tick(10)
 
 pygame.quit()
