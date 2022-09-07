@@ -135,6 +135,21 @@ def calculate_electromagnetic(distance,p1,p2):
     F = E * (p1.charge * p2.charge)/distance**2
     return F
 
+def add_momentum(xmomentum,ymomentum):
+    xmomentum *= 2
+    ymomentum *= 2
+    xmomentum /= len(all_particles)
+    ymomentum /= len(all_particles)
+    mass = 0
+    for particle in all_particles:
+        mass += particle.mass
+    xvelocity = xmomentum/mass
+    yvelocity = ymomentum/mass
+
+    for particle in all_particles:
+        particle.velocityx += xvelocity
+        particle.velocityy += yvelocity
+
 def update_velocity():
     for p1 in all_particles:
         fx = 0
@@ -164,8 +179,10 @@ def update_position():
 
         if(a.position.x <= 0 or a.position.x >= screen.get_size()[0]):
             a.velocityx = -1*a.velocityx
+            #add_momentum(a.velocityx*a.mass,a.velocityy*a.mass)
         if(a.position.y <= 0 or a.position.y >= screen.get_size()[1]):
             a.velocityy = -1*a.velocityy
+            #add_momentum(a.velocityx*a.mass,a.velocityy*a.mass)
 
 def move():
     update_velocity()
@@ -173,7 +190,7 @@ def move():
 
 protons = create(10,YELLOW,1,1836)
 electrons = create(10, WHITE,-1,1)
-# neutrons = create(150,BLUE,0)
+#neutrons = create(10,BLUE,0,1839)
 
 all_particles = protons + electrons
 
@@ -191,6 +208,7 @@ while running:
     move()
     update(protons,screen)
     update(electrons,screen)
+    #update(neutrons,screen)
 
     # randomnumber = random.randint(1,10)
     # if randomnumber == 1:
@@ -209,6 +227,6 @@ while running:
 
     pygame.display.flip()
 
-    clock.tick(1000)
+    clock.tick(100)
 
 pygame.quit()
